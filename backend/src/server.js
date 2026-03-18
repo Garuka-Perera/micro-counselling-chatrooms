@@ -16,10 +16,10 @@ const { registerChatHandlers } = require("./socket/chat.socket");
 const app = express();
 const server = http.createServer(app);
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8080;
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "*";
 
-// IMPORTANT for Railway / reverse proxy
+// ✅ REQUIRED for Railway
 app.set("trust proxy", 1);
 
 app.use(
@@ -41,6 +41,7 @@ const limiter = rateLimit({
 
 app.use(limiter);
 
+// ✅ Health check
 app.get("/health", async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -59,10 +60,12 @@ app.get("/health", async (req, res) => {
   }
 });
 
+// Routes
 app.use("/auth", authRoutes);
 app.use("/admin", adminRoutes);
 app.use("/chat", chatRoutes);
 
+// 404 handler
 app.use((req, res) => {
   return res.status(404).json({
     ok: false,
@@ -70,6 +73,7 @@ app.use((req, res) => {
   });
 });
 
+// Error handler
 app.use((err, req, res, next) => {
   console.error("Unhandled error:", err);
   return res.status(500).json({
@@ -78,6 +82,7 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Socket.IO
 const io = new Server(server, {
   cors: {
     origin: CLIENT_ORIGIN === "*" ? true : CLIENT_ORIGIN.split(","),
@@ -87,12 +92,15 @@ const io = new Server(server, {
 
 registerChatHandlers(io);
 
+// ✅ START SERVER (ONLY THIS ONE!)
 async function startServer() {
   try {
     await prisma.$connect();
-    server.listen(PORT, () => {
-      console.log(`Backend running on http://localhost:${PORT}`);
+
+    server.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on port ${PORT}`);
     });
+
   } catch (error) {
     console.error("Failed to start backend:", error);
     process.exit(1);
@@ -101,6 +109,7 @@ async function startServer() {
 
 startServer();
 
+// Graceful shutdown
 async function shutdown(signal) {
   console.log(`${signal} received. Closing server...`);
   try {
