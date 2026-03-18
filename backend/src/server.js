@@ -19,6 +19,9 @@ const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "*";
 
+// IMPORTANT for Railway / reverse proxy
+app.set("trust proxy", 1);
+
 app.use(
   cors({
     origin: CLIENT_ORIGIN === "*" ? true : CLIENT_ORIGIN.split(","),
